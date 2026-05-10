@@ -1,0 +1,13 @@
+{
+  "name": "cidwebsite",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Site statique HTML / CSS / JS avec Supabase",
+  "scripts": {
+    "start": "npx --yes serve . -l 3000"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.105.4"
+  }
+}

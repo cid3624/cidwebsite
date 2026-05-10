@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CidWebsite</title>
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body>
+    <div id="age-gate" class="age-gate" aria-hidden="false">
+      <div class="age-gate__box">
+        <p class="age-gate__badge">18+</p>
+        <h2>Contenu réservé aux adultes</h2>
+        <p class="age-gate__text">
+          Ce site peut afficher du contenu explicite. En continuant, vous confirmez avoir l’âge légal dans votre pays.
+        </p>
+        <div class="age-gate__actions">
+          <button type="button" class="btn btn--primary" id="age-confirm">J’ai 18 ans ou plus</button>
+          <button type="button" class="btn btn--ghost" id="age-leave">Quitter</button>
+        </div>
+      </div>
+    </div>
+
+    <header class="site-header">
+      <div class="wrap site-header__inner">
+        <div>
+          <p class="eyebrow">Communauté — fanart &amp; agrégation</p>
+          <h1>Galerie</h1>
+          <p class="lede">
+            HTML / CSS / JavaScript + Supabase. Les médias viennent de ta base quand l’URL et la clé sont renseignées dans
+            <code>assets/js/config.js</code>.
+          </p>
+        </div>
+        <div class="site-header__tools">
+          <button type="button" class="btn btn--ghost" id="btn-theme" title="Thème clair / sombre">Thème</button>
+          <button type="button" class="btn btn--primary" id="btn-add">Ajouter un média</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap main">
+      <section class="toolbar" aria-label="Filtres">
+        <label class="field">
+          <span>Recherche par tags</span>
+          <input
+            type="search"
+            id="tag-search"
+            placeholder="ex. anime portrait"
+            autocomplete="off"
+          />
+        </label>
+        <label class="field field--small">
+          <span>Type</span>
+          <select id="type-filter">
+            <option value="ALL">Tous</option>
+            <option value="IMAGE">Images</option>
+            <option value="VIDEO">Vidéos</option>
+            <option value="ANIMATION">Animations</option>
+          </select>
+        </label>
+        <label class="field field--small">
+          <span>Trier</span>
+          <select id="sort-filter">
+            <option value="newest">Plus récent</option>
+            <option value="likes">Plus liké</option>
+            <option value="views">Plus vu</option>
+          </select>
+        </label>
+        <p class="toolbar__meta" id="status-line">Chargement…</p>
+      </section>
+
+      <section class="stats" id="stats">
+        <article class="stat"><p>Total</p><strong id="stat-total">0</strong></article>
+        <article class="stat"><p>Images</p><strong id="stat-image">0</strong></article>
+        <article class="stat"><p>Vidéos</p><strong id="stat-video">0</strong></article>
+        <article class="stat"><p>Animations</p><strong id="stat-animation">0</strong></article>
+      </section>
+
+      <div id="gallery" class="masonry" aria-live="polite"></div>
+      <p id="empty-state" class="empty-state hidden">Aucun contenu pour ces filtres.</p>
+      <div id="sentinel" class="sentinel" aria-hidden="true"></div>
+    </main>
+
+    <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal__backdrop" data-close></div>
+      <div class="modal__panel">
+        <h2 id="modal-title">Ajouter un média</h2>
+        <p class="modal__hint">
+          Nécessite une règle RLS <strong>insert</strong> adaptée (voir <code>supabase/schema.sql</code>). Sinon ajoute les lignes
+          depuis le tableau Supabase.
+        </p>
+        <form id="form-add" class="form">
+          <label class="field">
+            <span>Type</span>
+            <select name="type" required>
+              <option value="IMAGE">Image</option>
+              <option value="VIDEO">Vidéo</option>
+              <option value="ANIMATION">Animation</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>URL du média (direct)</span>
+            <input name="original_url" type="url" required placeholder="https://..." />
+          </label>
+          <label class="field">
+            <span>Ou upload fichier (bucket Supabase `media`)</span>
+            <input name="media_file" type="file" accept="image/*,video/*" />
+          </label>
+          <label class="field">
+            <span>URL affiche / vignette (optionnel)</span>
+            <input name="poster_url" type="url" placeholder="https://..." />
+          </label>
+          <label class="field">
+            <span>Tags (séparés par des virgules)</span>
+            <input name="tags" type="text" placeholder="tag1, tag2" />
+          </label>
+          <label class="field">
+            <span>Catégories (slugs, virgules)</span>
+            <input name="categories" type="text" placeholder="anime, 3d" />
+          </label>
+          <div class="form__actions">
+            <button type="button" class="btn btn--ghost" data-close>Annuler</button>
+            <button type="submit" class="btn btn--primary">Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="preview" class="modal hidden" role="dialog" aria-modal="true" aria-label="Aperçu média">
+      <div class="modal__backdrop" data-preview-close></div>
+      <div class="preview-panel">
+        <button class="btn btn--ghost preview-panel__close" type="button" data-preview-close>Fermer</button>
+        <div id="preview-body"></div>
+      </div>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script type="module" src="assets/js/app.js"></script>
+  </body>
+</html>
