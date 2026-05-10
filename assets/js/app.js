@@ -347,6 +347,101 @@ function setupPreviewModal() {
     els.previewBody.innerHTML = "";
   };
   document.querySelectorAll("[data-preview-close]").forEach((n) => n.addEventListener("click", close));
+
+  // Swipe down to close on mobile
+  setupSwipeToClose(els.preview, close);
+}
+
+// Swipe to close for modals (mobile)
+function setupSwipeToClose(element, closeFn) {
+  let startY = 0;
+  let currentY = 0;
+  let isDragging = false;
+
+  const panel = element.querySelector('.modal__panel, .preview-panel');
+  if (!panel) return;
+
+  const onTouchStart = (e) => {
+    const touch = e.touches[0];
+    startY = touch.clientY;
+    isDragging = true;
+    panel.style.transition = 'none';
+  };
+
+  const onTouchMove = (e) => {
+    if (!isDragging) return;
+    const touch = e.touches[0];
+    currentY = touch.clientY;
+    const diff = currentY - startY;
+
+    // Only allow dragging down
+    if (diff > 0) {
+      panel.style.transform = `translateY(${diff}px)`;
+    }
+  };
+
+  const onTouchEnd = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    panel.style.transition = 'transform 0.3s ease-out';
+
+    const diff = currentY - startY;
+    if (diff > 100) {
+      // Swiped far enough, close
+      panel.style.transform = 'translateY(100%)';
+      setTimeout(closeFn, 200);
+    } else {
+      // Snap back
+      panel.style.transform = '';
+    }
+  };
+
+  panel.addEventListener('touchstart', onTouchStart, { passive: true });
+  panel.addEventListener('touchmove', onTouchMove, { passive: true });
+  panel.addEventListener('touchend', onTouchEnd, { passive: true });
+}
+
+// Keyboard handling for mobile
+function setupKeyboardHandling() {
+  const isMobile = window.matchMedia('(max-width: 640px)').matches;
+  if (!isMobile) return;
+
+  // Adjust layout when keyboard opens/closes
+  const inputs = document.querySelectorAll('input, select, textarea');
+  inputs.forEach(input => {
+    input.addEventListener('focus', () => {
+      document.body.classList.add('keyboard-open');
+    });
+    input.addEventListener('blur', () => {
+      document.body.classList.remove('keyboard-open');
+    });
+  });
+}
+
+// Double tap to like on mobile
+function setupDoubleTapLike() {
+  let lastTap = 0;
+  const gallery = els.gallery;
+
+  gallery.addEventListener('click', (e) => {
+    const card = e.target.closest('.card');
+    if (!card) return;
+
+    const currentTime = new Date().getTime();
+    const tapLength = currentTime - lastTap;
+
+    if (tapLength < 300 && tapLength > 0) {
+      // Double tap detected
+      const likeBtn = card.querySelector('.btn-like');
+      if (likeBtn) {
+        likeBtn.click();
+        // Visual feedback
+        card.style.transform = 'scale(0.98)';
+        setTimeout(() => card.style.transform = '', 150);
+      }
+    }
+    lastTap = currentTime;
+  });
 }
 
 document.getElementById("btn-theme")?.addEventListener("click", toggleTheme);
@@ -357,3 +452,12 @@ setupInfiniteScroll();
 setupFilters();
 setupModal();
 setupPreviewModal();
+setupKeyboardHandling();
+setupDoubleTapLike();
+
+// Handle visibility change (pause videos when app is backgrounded)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    document.querySelectorAll('video').forEach(v => v.pause());
+  }
+});
