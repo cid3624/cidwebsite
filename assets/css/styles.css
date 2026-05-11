@@ -846,17 +846,63 @@ h1 {
   object-fit: contain;
 }
 
-/* Fullscreen fix */
+/* Fullscreen fix - global and preview */
+video:fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  object-fit: contain !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 9999 !important;
+}
+
+video:-webkit-full-screen {
+  width: 100vw !important;
+  height: 100vh !important;
+  object-fit: contain !important;
+}
+
+video:-moz-full-screen {
+  width: 100vw !important;
+  height: 100vh !important;
+  object-fit: contain !important;
+}
+
 #preview-body video:fullscreen {
-  width: 100vw;
-  height: 100vh;
-  max-width: 100vw;
-  max-height: 100vh;
-  object-fit: contain;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  object-fit: contain !important;
+  border-radius: 0 !important;
+}
+
+/* Ensure preview panel doesn't constrain fullscreen */
+.preview-panel {
+  position: relative;
+  width: min(980px, 95vw);
+  max-height: 90vh;
+  overflow: visible;
+  padding: 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
 }
 
 #preview-body video::-webkit-media-controls {
   display: flex !important;
+}
+
+/* Fix for iOS Safari fullscreen */
+@supports (-webkit-touch-callout: none) {
+  video:fullscreen {
+    width: 100vw !important;
+    height: 100vh !important;
+    object-fit: contain !important;
+  }
 }
 
 .modal__hint {

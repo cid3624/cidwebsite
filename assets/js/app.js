@@ -430,6 +430,21 @@ const LinkExtractor = {
   xhamsterRegex: /xhamster\.com\/videos\/([a-zA-Z0-9_-]+)/i,
   pornhubRegex: /pornhub\.com\/view_video\.php\?viewkey=([a-zA-Z0-9]+)/i,
 
+  // GIF/Image platforms
+  redgifsRegex: /redgifs\.com\/watch\/([a-zA-Z0-9_-]+)/i,
+  gfycatRegex: /gfycat\.com\/([a-zA-Z0-9_-]+)/i,
+  imgurRegex: /imgur\.com\/(?:gallery\/|a\/)?([a-zA-Z0-9]+)/i,
+
+  // Other adult platforms
+  beegRegex: /beeg\.com\/([\d-]+)/i,
+  thumbzillaRegex: /thumbzilla\.com\/video\/([a-zA-Z0-9_-]+)/i,
+  tube8Regex: /tube8\.com\/video\/([a-zA-Z0-9_-]+)/i,
+  drtuberRegex: /drtuber\.com\/video\/([\d]+)/i,
+  txxxRegex: /txxx\.com\/video\/([\d]+)/i,
+  sunpornoRegex: /sunporno\.com\/video\/([\d]+)/i,
+  porntrexRegex: /porntrex\.com\/video\/([\d]+)/i,
+  epornerRegex: /eporner\.com\/video-([a-zA-Z0-9_-]+)/i,
+
   // Direct video extensions
   videoExtensions: ['.mp4', '.webm', '.ogg', '.mov', '.mkv', '.avi', '.m3u8'],
   imageExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'],
@@ -629,6 +644,171 @@ const LinkExtractor = {
       };
     }
 
+    // RedGIFs (NSFW Gfycat successor)
+    const redgifsMatch = url.match(this.redgifsRegex);
+    if (redgifsMatch) {
+      const gifId = redgifsMatch[1];
+      return {
+        type: 'ANIMATION',
+        originalUrl: url,
+        embedUrl: `https://www.redgifs.com/ifr/${gifId}`,
+        posterUrl: `https://thumbs2.redgifs.com/${gifId}-mobile.jpg`,
+        source: 'redgifs',
+        videoId: gifId,
+        isAdult: true
+      };
+    }
+
+    // Gfycat
+    const gfycatMatch = url.match(this.gfycatRegex);
+    if (gfycatMatch) {
+      const gifId = gfycatMatch[1];
+      return {
+        type: 'ANIMATION',
+        originalUrl: url,
+        embedUrl: `https://gfycat.com/ifr/${gifId}`,
+        posterUrl: `https://thumbs.gfycat.com/${gifId}-mobile.jpg`,
+        source: 'gfycat',
+        videoId: gifId,
+        isAdult: false
+      };
+    }
+
+    // Imgur
+    const imgurMatch = url.match(this.imgurRegex);
+    if (imgurMatch) {
+      const imgId = imgurMatch[1];
+      return {
+        type: 'IMAGE',
+        originalUrl: url,
+        embedUrl: `https://i.imgur.com/${imgId}.jpg`,
+        posterUrl: `https://i.imgur.com/${imgId}l.jpg`, // l = large thumbnail
+        source: 'imgur',
+        videoId: imgId,
+        isAdult: false
+      };
+    }
+
+    // Beeg
+    const beegMatch = url.match(this.beegRegex);
+    if (beegMatch) {
+      const videoId = beegMatch[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: url,
+        embedUrl: `https://beeg.com/${videoId}`,
+        posterUrl: null,
+        source: 'beeg',
+        videoId,
+        isAdult: true
+      };
+    }
+
+    // Thumbzilla
+    const thumbzillaMatch = url.match(this.thumbzillaRegex);
+    if (thumbzillaMatch) {
+      const videoId = thumbzillaMatch[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: url,
+        embedUrl: `https://www.thumbzilla.com/embed/${videoId}`,
+        posterUrl: null,
+        source: 'thumbzilla',
+        videoId,
+        isAdult: true
+      };
+    }
+
+    // Tube8
+    const tube8Match = url.match(this.tube8Regex);
+    if (tube8Match) {
+      const videoId = tube8Match[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: url,
+        embedUrl: `https://www.tube8.com/embed/adult/${videoId}`,
+        posterUrl: null,
+        source: 'tube8',
+        videoId,
+        isAdult: true
+      };
+    }
+
+    // DrTuber
+    const drtuberMatch = url.match(this.drtuberRegex);
+    if (drtuberMatch) {
+      const videoId = drtuberMatch[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: url,
+        embedUrl: `https://www.drtuber.com/embed/${videoId}`,
+        posterUrl: null,
+        source: 'drtuber',
+        videoId,
+        isAdult: true
+      };
+    }
+
+    // TXXX
+    const txxxMatch = url.match(this.txxxRegex);
+    if (txxxMatch) {
+      const videoId = txxxMatch[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: url,
+        embedUrl: `https://www.txxx.com/embed/${videoId}`,
+        posterUrl: null,
+        source: 'txxx',
+        videoId,
+        isAdult: true
+      };
+    }
+
+    // SunPorno
+    const sunpornoMatch = url.match(this.sunpornoRegex);
+    if (sunpornoMatch) {
+      const videoId = sunpornoMatch[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: url,
+        embedUrl: `https://www.sunporno.com/embed/${videoId}`,
+        posterUrl: null,
+        source: 'sunporno',
+        videoId,
+        isAdult: true
+      };
+    }
+
+    // PornTrex
+    const porntrexMatch = url.match(this.porntrexRegex);
+    if (porntrexMatch) {
+      const videoId = porntrexMatch[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: url,
+        embedUrl: `https://www.porntrex.com/embed/${videoId}`,
+        posterUrl: null,
+        source: 'porntrex',
+        videoId,
+        isAdult: true
+      };
+    }
+
+    // EPorner
+    const epornerMatch = url.match(this.epornerRegex);
+    if (epornerMatch) {
+      const videoId = epornerMatch[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: url,
+        embedUrl: `https://www.eporner.com/embed/${videoId}`,
+        posterUrl: null,
+        source: 'eporner',
+        videoId,
+        isAdult: true
+      };
+    }
+
     return null;
   },
 
@@ -658,7 +838,9 @@ const LinkExtractor = {
     const adultDomains = [
       'xvideos.com', 'xnxx.com', 'redtube.com', 'youporn.com',
       'spankbang.com', 'xhamster.com', 'pornhub.com',
-      'tube8.com', 'drtuber.com', 'txxx.com', 'sunporno.com'
+      'tube8.com', 'drtuber.com', 'txxx.com', 'sunporno.com',
+      'redgifs.com', 'beeg.com', 'thumbzilla.com',
+      'porntrex.com', 'eporner.com'
     ];
     const lowerUrl = url.toLowerCase();
     return adultDomains.some(domain => lowerUrl.includes(domain));
