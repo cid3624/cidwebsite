@@ -272,7 +272,40 @@ function createCard(item) {
     video.appendChild(source);
     media.appendChild(video);
 
-    // Custom play/pause on click
+    // Custom video controls overlay
+    const controls = document.createElement('div');
+    controls.className = 'card__video-controls';
+    controls.innerHTML = `
+      <button class="card__video-btn" title="Play/Pause">▶</button>
+      <button class="card__video-btn card__video-btn--fullscreen" title="Plein écran">⛶</button>
+    `;
+    media.appendChild(controls);
+
+    // Play/Pause button
+    const playBtn = controls.querySelector('button:first-child');
+    playBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (video.paused) {
+        video.play().catch(() => {});
+        playBtn.textContent = '⏸';
+      } else {
+        video.pause();
+        playBtn.textContent = '▶';
+      }
+    });
+
+    // Fullscreen button - opens preview modal
+    const fsBtn = controls.querySelector('.card__video-btn--fullscreen');
+    fsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openPreview(item);
+    });
+
+    // Update play button icon on video events
+    video.addEventListener('play', () => playBtn.textContent = '⏸');
+    video.addEventListener('pause', () => playBtn.textContent = '▶');
+
+    // Click on video toggles play
     video.addEventListener('click', (e) => {
       e.stopPropagation();
       if (video.paused) {
@@ -280,12 +313,6 @@ function createCard(item) {
       } else {
         video.pause();
       }
-    });
-
-    // Double click opens preview modal (our custom fullscreen)
-    video.addEventListener('dblclick', (e) => {
-      e.stopPropagation();
-      openPreview(item);
     });
   } else {
     const img = document.createElement("img");
