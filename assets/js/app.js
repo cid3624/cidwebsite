@@ -155,7 +155,6 @@ function updateStats(list) {
 
 function render() {
   const items = getFilteredItems();
-  updateStats(items);
   els.gallery.innerHTML = "";
   items.forEach((item) => els.gallery.appendChild(createCard(item)));
   els.emptyState.classList.toggle("hidden", items.length > 0);
