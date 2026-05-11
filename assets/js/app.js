@@ -250,22 +250,48 @@ function createCard(item) {
   if (isVideo) {
     const video = document.createElement("video");
     video.controls = true;
-    video.preload = "none";
+    video.preload = "metadata";
     video.playsInline = true;
-    // Use poster_url if available
+    video.muted = true; // Required for autoplay on mobile
+
+    // Use poster_url if available, otherwise show placeholder
     if (item.poster_url) {
       video.poster = item.poster_url;
+      // Preload poster image
+      const posterImg = new Image();
+      posterImg.src = item.poster_url;
+      posterImg.onload = markLoaded;
+      posterImg.onerror = () => {
+        // Fallback: try to load video metadata
+        video.preload = "metadata";
+        video.addEventListener("loadedmetadata", markLoaded, { once: true });
+      };
+    } else {
+      // No poster - load video metadata to get first frame
+      video.preload = "metadata";
+      video.addEventListener("loadedmetadata", markLoaded, { once: true });
     }
+
     const source = document.createElement("source");
     source.src = item.original_url;
     video.appendChild(source);
-    video.addEventListener("loadeddata", markLoaded, { once: true });
     media.appendChild(video);
   } else {
     const img = document.createElement("img");
-    img.src = item.original_url;
+    // Use poster_url as thumbnail if available for images too
+    img.src = item.poster_url || item.original_url;
     img.alt = "";
     img.loading = "lazy";
+    img.decoding = "async";
+
+    // Handle load error - fallback to original_url
+    img.addEventListener("error", () => {
+      if (img.src !== item.original_url) {
+        img.src = item.original_url;
+      }
+      markLoaded();
+    });
+
     img.addEventListener("load", markLoaded, { once: true });
     media.appendChild(img);
   }
@@ -390,6 +416,121 @@ async function loadNextPage() {
   render();
 }
 
+// Link extraction system - handles various URL types
+const LinkExtractor = {
+  // YouTube patterns
+  youtubeRegex: /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+
+  // Vimeo patterns
+  vimeoRegex: /vimeo\.com\/(\d+)/,
+
+  // Direct video extensions
+  videoExtensions: ['.mp4', '.webm', '.ogg', '.mov', '.mkv', '.avi'],
+  imageExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'],
+
+  // Extract and normalize URL
+  extract(url) {
+    if (!url) return null;
+    url = url.trim();
+
+    // YouTube
+    const youtubeMatch = url.match(this.youtubeRegex);
+    if (youtubeMatch) {
+      const videoId = youtubeMatch[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: `https://www.youtube.com/watch?v=${videoId}`,
+        embedUrl: `https://www.youtube.com/embed/${videoId}`,
+        posterUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+        posterUrlFallback: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+        source: 'youtube',
+        videoId
+      };
+    }
+
+    // Vimeo
+    const vimeoMatch = url.match(this.vimeoRegex);
+    if (vimeoMatch) {
+      const videoId = vimeoMatch[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: `https://vimeo.com/${videoId}`,
+        embedUrl: `https://player.vimeo.com/video/${videoId}`,
+        posterUrl: null, // Vimeo requires API for thumbnails
+        source: 'vimeo',
+        videoId
+      };
+    }
+
+    // Direct file detection
+    const lowerUrl = url.toLowerCase();
+    const isVideo = this.videoExtensions.some(ext => lowerUrl.endsWith(ext));
+    const isImage = this.imageExtensions.some(ext => lowerUrl.endsWith(ext));
+
+    if (isVideo) {
+      return {
+        type: 'VIDEO',
+        originalUrl: url,
+        embedUrl: url,
+        posterUrl: null,
+        source: 'direct'
+      };
+    }
+
+    if (isImage) {
+      return {
+        type: 'IMAGE',
+        originalUrl: url,
+        embedUrl: url,
+        posterUrl: url,
+        source: 'direct'
+      };
+    }
+
+    // GIF detection
+    if (lowerUrl.endsWith('.gif')) {
+      return {
+        type: 'ANIMATION',
+        originalUrl: url,
+        embedUrl: url,
+        posterUrl: null,
+        source: 'direct'
+      };
+    }
+
+    // Default: assume it's a direct link
+    return {
+      type: 'VIDEO',
+      originalUrl: url,
+      embedUrl: url,
+      posterUrl: null,
+      source: 'unknown'
+    };
+  },
+
+  // Auto-detect best poster URL
+  async getBestPoster(url, type) {
+    const extracted = this.extract(url);
+    if (!extracted) return null;
+
+    // For YouTube, try maxres first, fallback to hq
+    if (extracted.source === 'youtube') {
+      // Try to load maxres, fallback to hq
+      const img = new Image();
+      img.src = extracted.posterUrl;
+
+      return new Promise((resolve) => {
+        img.onload = () => resolve(extracted.posterUrl);
+        img.onerror = () => resolve(extracted.posterUrlFallback);
+        // Timeout fallback
+        setTimeout(() => resolve(extracted.posterUrlFallback), 3000);
+      });
+    }
+
+    return extracted.posterUrl;
+  }
+};
+
 async function uploadIfNeeded(file) {
   if (!file) return null;
   const ext = file.name.split(".").pop() || "bin";
@@ -422,12 +563,52 @@ function setupFilters() {
   els.search.addEventListener("input", debounce);
   els.typeFilter.addEventListener("change", render);
   els.sortFilter.addEventListener("change", render);
+
+  // Mobile filter toggle
+  const filterBtn = document.getElementById("btn-filters");
+  const filterPanel = document.getElementById("toolbar-filters");
+  if (filterBtn && filterPanel) {
+    filterBtn.addEventListener("click", () => {
+      filterPanel.classList.toggle("is-visible");
+      filterBtn.classList.toggle("is-active");
+    });
+  }
 }
 
 function setupModal() {
   const close = () => els.modal.classList.add("hidden");
   document.getElementById("btn-add")?.addEventListener("click", () => els.modal.classList.remove("hidden"));
   els.modal.querySelectorAll("[data-close]").forEach((n) => n.addEventListener("click", close));
+
+  // Auto-detect type and poster when URL changes
+  const urlInput = els.formAdd.querySelector('[name="original_url"]');
+  const typeSelect = els.formAdd.querySelector('[name="type"]');
+  const posterInput = els.formAdd.querySelector('[name="poster_url"]');
+
+  if (urlInput) {
+    urlInput.addEventListener("input", async (e) => {
+      const url = e.target.value.trim();
+      if (!url) return;
+
+      // Use LinkExtractor to detect type and poster
+      const extracted = LinkExtractor.extract(url);
+      if (extracted) {
+        // Auto-select type
+        if (typeSelect && extracted.type) {
+          typeSelect.value = extracted.type;
+        }
+
+        // Auto-fill poster for YouTube
+        if (posterInput && extracted.source === 'youtube' && extracted.posterUrl) {
+          const bestPoster = await LinkExtractor.getBestPoster(url);
+          if (bestPoster) {
+            posterInput.value = bestPoster;
+          }
+        }
+      }
+    });
+  }
+
   els.formAdd.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     if (!supabase) return alert("Configure Supabase dans assets/js/config.js");
@@ -435,6 +616,9 @@ function setupModal() {
     const mediaFile = fd.get("media_file");
     let originalUrl = String(fd.get("original_url") || "").trim();
     let storagePath = null;
+    let posterUrl = String(fd.get("poster_url") || "").trim() || null;
+    let detectedType = String(fd.get("type"));
+
     try {
       if (mediaFile && mediaFile.size > 0) {
         const uploaded = await uploadIfNeeded(mediaFile);
@@ -442,10 +626,21 @@ function setupModal() {
         storagePath = uploaded.path;
       }
       if (!originalUrl) return alert("Ajoute une URL ou un fichier.");
+
+      // Use LinkExtractor to get poster if not provided
+      const extracted = LinkExtractor.extract(originalUrl);
+      if (extracted && !posterUrl) {
+        posterUrl = await LinkExtractor.getBestPoster(originalUrl);
+        // Update type if auto-detected
+        if (extracted.type && detectedType === 'IMAGE') {
+          detectedType = extracted.type;
+        }
+      }
+
       const payload = {
-        type: String(fd.get("type")),
+        type: detectedType,
         original_url: originalUrl,
-        poster_url: String(fd.get("poster_url") || "").trim() || null,
+        poster_url: posterUrl,
         tags: String(fd.get("tags") || "")
           .split(",")
           .map((x) => x.trim())
@@ -462,6 +657,7 @@ function setupModal() {
       els.formAdd.reset();
       resetAndLoad();
     } catch (err) {
+      console.error("Error inserting media:", err);
       alert(`Insertion impossible: ${err.message}`);
     }
   });
@@ -679,5 +875,48 @@ setupDoubleTapLike();
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     document.querySelectorAll('video').forEach(v => v.pause());
+  }
+});
+
+// Global error handling to prevent "message channel closed" and other uncaught errors
+window.addEventListener('error', (e) => {
+  // Suppress known non-critical errors
+  const suppressedMessages = [
+    'message channel closed',
+    'extension',
+    'chrome-extension',
+    'ResizeObserver',
+    'Script error'
+  ];
+
+  const shouldSuppress = suppressedMessages.some(msg =>
+    e.message?.toLowerCase().includes(msg.toLowerCase()) ||
+    e.filename?.toLowerCase().includes('extension')
+  );
+
+  if (shouldSuppress) {
+    e.preventDefault();
+    console.warn('Suppressed non-critical error:', e.message);
+    return false;
+  }
+});
+
+// Handle unhandled promise rejections
+window.addEventListener('unhandledrejection', (e) => {
+  const suppressedMessages = [
+    'message channel closed',
+    'extension',
+    'chrome-extension'
+  ];
+
+  const shouldSuppress = suppressedMessages.some(msg =>
+    e.reason?.message?.toLowerCase().includes(msg.toLowerCase()) ||
+    String(e.reason).toLowerCase().includes(msg.toLowerCase())
+  );
+
+  if (shouldSuppress) {
+    e.preventDefault();
+    console.warn('Suppressed unhandled promise:', e.reason);
+    return false;
   }
 });

@@ -54,10 +54,7 @@
         <div class="site-header__brand">
           <p class="eyebrow">Communauté — fanart &amp; agrégation</p>
           <h1>Galerie</h1>
-          <p class="lede">
-            HTML / CSS / JavaScript + Supabase. Les médias viennent de ta base quand l’URL et la clé sont renseignées dans
-            <code>assets/js/config.js</code>.
-          </p>
+          <p class="lede">Votre collection de médias, organisée avec élégance.</p>
         </div>
         <div class="site-header__tools">
           <button type="button" class="btn btn--ghost" id="btn-theme" title="Thème clair / sombre">Thème</button>
@@ -68,16 +65,23 @@
 
     <main class="wrap main">
       <section class="toolbar" aria-label="Filtres">
-        <label class="field">
-          <span>Recherche par tags</span>
-          <input
-            type="search"
-            id="tag-search"
-            placeholder="ex. anime portrait"
-            autocomplete="off"
-          />
-        </label>
-        <div class="toolbar__group">
+        <div class="toolbar__search">
+          <label class="field field--search">
+            <span class="sr-only">Recherche</span>
+            <input
+              type="search"
+              id="tag-search"
+              placeholder="🔍 Rechercher par tags..."
+              autocomplete="off"
+            />
+          </label>
+          <button type="button" class="toolbar__filter-btn" id="btn-filters" title="Filtres">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+            </svg>
+          </button>
+        </div>
+        <div class="toolbar__filters" id="toolbar-filters">
           <label class="field field--small">
             <span>Type</span>
             <select id="type-filter">
