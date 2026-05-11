@@ -416,16 +416,23 @@ async function loadNextPage() {
   render();
 }
 
-// Link extraction system - handles various URL types
+// Link extraction system - handles various URL types including adult hosts
 const LinkExtractor = {
-  // YouTube patterns
+  // Standard video platforms
   youtubeRegex: /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-
-  // Vimeo patterns
   vimeoRegex: /vimeo\.com\/(\d+)/,
 
+  // Adult video platforms - extract video IDs
+  xvideosRegex: /xvideos\.com\/video([a-zA-Z0-9]+)/i,
+  xnxxRegex: /xnxx\.com\/video-([a-zA-Z0-9]+)/i,
+  redtubeRegex: /redtube\.com\/(\d+)/i,
+  youpornRegex: /youporn\.com\/watch\/([\d]+)/i,
+  spankbangRegex: /spankbang\.com\/([a-zA-Z0-9]+)\/video/i,
+  xhamsterRegex: /xhamster\.com\/videos\/([a-zA-Z0-9_-]+)/i,
+  pornhubRegex: /pornhub\.com\/view_video\.php\?viewkey=([a-zA-Z0-9]+)/i,
+
   // Direct video extensions
-  videoExtensions: ['.mp4', '.webm', '.ogg', '.mov', '.mkv', '.avi'],
+  videoExtensions: ['.mp4', '.webm', '.ogg', '.mov', '.mkv', '.avi', '.m3u8'],
   imageExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'],
 
   // Extract and normalize URL
@@ -456,10 +463,16 @@ const LinkExtractor = {
         type: 'VIDEO',
         originalUrl: `https://vimeo.com/${videoId}`,
         embedUrl: `https://player.vimeo.com/video/${videoId}`,
-        posterUrl: null, // Vimeo requires API for thumbnails
+        posterUrl: null,
         source: 'vimeo',
         videoId
       };
+    }
+
+    // Adult platforms - detect and provide embed URLs where possible
+    const adultMatch = this.matchAdultPlatform(url);
+    if (adultMatch) {
+      return adultMatch;
     }
 
     // Direct file detection
@@ -498,7 +511,7 @@ const LinkExtractor = {
       };
     }
 
-    // Default: assume it's a direct link
+    // Default: assume it's a direct video link
     return {
       type: 'VIDEO',
       originalUrl: url,
@@ -508,6 +521,118 @@ const LinkExtractor = {
     };
   },
 
+  // Match adult video platforms
+  matchAdultPlatform(url) {
+    const lowerUrl = url.toLowerCase();
+
+    // SpankBang (provides embed)
+    const spankbangMatch = url.match(this.spankbangRegex);
+    if (spankbangMatch) {
+      const videoId = spankbangMatch[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: url,
+        embedUrl: `https://spankbang.com/${videoId}/embed/`,
+        posterUrl: null,
+        source: 'spankbang',
+        videoId,
+        isAdult: true
+      };
+    }
+
+    // XHamster (provides embed)
+    const xhamsterMatch = url.match(this.xhamsterRegex);
+    if (xhamsterMatch) {
+      const videoId = xhamsterMatch[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: url,
+        embedUrl: `https://xhamster.com/embed/${videoId}`,
+        posterUrl: null,
+        source: 'xhamster',
+        videoId,
+        isAdult: true
+      };
+    }
+
+    // XVideos (direct video URL preferred, embed available)
+    const xvideosMatch = url.match(this.xvideosRegex);
+    if (xvideosMatch) {
+      const videoId = xvideosMatch[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: url,
+        embedUrl: `https://www.xvideos.com/embedframe/${videoId}`,
+        posterUrl: null,
+        source: 'xvideos',
+        videoId,
+        isAdult: true
+      };
+    }
+
+    // XNXX
+    const xnxxMatch = url.match(this.xnxxRegex);
+    if (xnxxMatch) {
+      const videoId = xnxxMatch[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: url,
+        embedUrl: `https://www.xnxx.com/embedframe/${videoId}`,
+        posterUrl: null,
+        source: 'xnxx',
+        videoId,
+        isAdult: true
+      };
+    }
+
+    // RedTube
+    const redtubeMatch = url.match(this.redtubeRegex);
+    if (redtubeMatch) {
+      const videoId = redtubeMatch[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: url,
+        embedUrl: `https://embed.redtube.com/?id=${videoId}`,
+        posterUrl: null,
+        source: 'redtube',
+        videoId,
+        isAdult: true
+      };
+    }
+
+    // YouPorn
+    const youpornMatch = url.match(this.youpornRegex);
+    if (youpornMatch) {
+      const videoId = youpornMatch[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: url,
+        embedUrl: `https://www.youporn.com/embed/${videoId}`,
+        posterUrl: null,
+        source: 'youporn',
+        videoId,
+        isAdult: true
+      };
+    }
+
+    // Pornhub
+    const pornhubMatch = url.match(this.pornhubRegex);
+    if (pornhubMatch) {
+      const videoId = pornhubMatch[1];
+      return {
+        type: 'VIDEO',
+        originalUrl: url,
+        embedUrl: `https://www.pornhub.com/embed/${videoId}`,
+        posterUrl: null,
+        source: 'pornhub',
+        videoId,
+        isAdult: true
+      };
+    }
+
+    return null;
+  },
+
   // Auto-detect best poster URL
   async getBestPoster(url, type) {
     const extracted = this.extract(url);
@@ -515,19 +640,29 @@ const LinkExtractor = {
 
     // For YouTube, try maxres first, fallback to hq
     if (extracted.source === 'youtube') {
-      // Try to load maxres, fallback to hq
       const img = new Image();
       img.src = extracted.posterUrl;
 
       return new Promise((resolve) => {
         img.onload = () => resolve(extracted.posterUrl);
         img.onerror = () => resolve(extracted.posterUrlFallback);
-        // Timeout fallback
         setTimeout(() => resolve(extracted.posterUrlFallback), 3000);
       });
     }
 
+    // For adult platforms, we can't easily get thumbnails without scraping
     return extracted.posterUrl;
+  },
+
+  // Check if URL is from adult platform
+  isAdultContent(url) {
+    const adultDomains = [
+      'xvideos.com', 'xnxx.com', 'redtube.com', 'youporn.com',
+      'spankbang.com', 'xhamster.com', 'pornhub.com',
+      'tube8.com', 'drtuber.com', 'txxx.com', 'sunporno.com'
+    ];
+    const lowerUrl = url.toLowerCase();
+    return adultDomains.some(domain => lowerUrl.includes(domain));
   }
 };
 
