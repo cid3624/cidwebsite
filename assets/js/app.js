@@ -248,26 +248,22 @@ function createCard(item) {
 
   if (isVideo) {
     const video = document.createElement("video");
-    video.controls = true;
+    video.controls = false; // Disable native controls to prevent fullscreen zoom issue
     video.preload = "metadata";
     video.playsInline = true;
-    video.muted = true; // Required for autoplay on mobile
+    video.muted = true;
+    video.style.cursor = 'pointer';
 
-    // Use poster_url if available, otherwise show placeholder
+    // Use poster_url if available
     if (item.poster_url) {
       video.poster = item.poster_url;
-      // Preload poster image
       const posterImg = new Image();
       posterImg.src = item.poster_url;
       posterImg.onload = markLoaded;
       posterImg.onerror = () => {
-        // Fallback: try to load video metadata
-        video.preload = "metadata";
         video.addEventListener("loadedmetadata", markLoaded, { once: true });
       };
     } else {
-      // No poster - load video metadata to get first frame
-      video.preload = "metadata";
       video.addEventListener("loadedmetadata", markLoaded, { once: true });
     }
 
@@ -275,6 +271,22 @@ function createCard(item) {
     source.src = item.original_url;
     video.appendChild(source);
     media.appendChild(video);
+
+    // Custom play/pause on click
+    video.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (video.paused) {
+        video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
+    });
+
+    // Double click opens preview modal (our custom fullscreen)
+    video.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      openPreview(item);
+    });
   } else {
     const img = document.createElement("img");
     // Use poster_url as thumbnail if available for images too
