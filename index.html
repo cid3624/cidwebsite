@@ -7,23 +7,51 @@
     <link rel="stylesheet" href="assets/css/styles.css" />
   </head>
   <body>
-    <div id="age-gate" class="age-gate" aria-hidden="false">
-      <div class="age-gate__box">
-        <p class="age-gate__badge">18+</p>
-        <h2>Contenu réservé aux adultes</h2>
-        <p class="age-gate__text">
-          Ce site peut afficher du contenu explicite. En continuant, vous confirmez avoir l’âge légal dans votre pays.
-        </p>
-        <div class="age-gate__actions">
-          <button type="button" class="btn btn--primary" id="age-confirm">J’ai 18 ans ou plus</button>
-          <button type="button" class="btn btn--ghost" id="age-leave">Quitter</button>
+    <div id="onboarding" class="onboarding" aria-hidden="false">
+      <div class="onboarding__backdrop"></div>
+      <div class="onboarding__content">
+        <div class="onboarding__step" data-step="1">
+          <div class="onboarding__icon">📷</div>
+          <h2>Galerie Médias</h2>
+          <p class="onboarding__text">Explorez, organisez et gérez votre collection d'images et vidéos.</p>
+          <div class="onboarding__dots">
+            <span class="dot active"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+          <button type="button" class="btn btn--primary onboarding__next">Continuer</button>
+        </div>
+        <div class="onboarding__step hidden" data-step="2">
+          <div class="onboarding__icon">✨</div>
+          <h2>Gestion Facile</h2>
+          <p class="onboarding__text">Ajoutez, modifiez ou supprimez du contenu. Gérez les posters et miniatures en un clic.</p>
+          <div class="onboarding__dots">
+            <span class="dot"></span>
+            <span class="dot active"></span>
+            <span class="dot"></span>
+          </div>
+          <button type="button" class="btn btn--primary onboarding__next">Continuer</button>
+        </div>
+        <div class="onboarding__step hidden" data-step="3">
+          <div class="onboarding__icon">🔞</div>
+          <h2>Contenu Adulte</h2>
+          <p class="onboarding__text">Ce site contient du contenu réservé aux adultes. Vous devez avoir 18 ans ou plus pour continuer.</p>
+          <div class="onboarding__dots">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot active"></span>
+          </div>
+          <div class="onboarding__actions">
+            <button type="button" class="btn btn--ghost" id="age-leave">Quitter</button>
+            <button type="button" class="btn btn--primary" id="age-confirm">J'ai 18 ans +</button>
+          </div>
         </div>
       </div>
     </div>
 
     <header class="site-header">
       <div class="wrap site-header__inner">
-        <div>
+        <div class="site-header__brand">
           <p class="eyebrow">Communauté — fanart &amp; agrégation</p>
           <h1>Galerie</h1>
           <p class="lede">
@@ -133,6 +161,61 @@
       <div class="preview-panel">
         <button class="btn btn--ghost preview-panel__close" type="button" data-preview-close>Fermer</button>
         <div id="preview-body"></div>
+      </div>
+    </div>
+
+    <div id="modal-edit" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-edit-title">
+      <div class="modal__backdrop" data-edit-close></div>
+      <div class="modal__panel modal__panel--large">
+        <h2 id="modal-edit-title">Modifier le média</h2>
+        <form id="form-edit" class="form">
+          <input type="hidden" name="id" />
+          <div class="form__grid">
+            <div class="form__col">
+              <label class="field">
+                <span>Type</span>
+                <select name="type" required>
+                  <option value="IMAGE">Image</option>
+                  <option value="VIDEO">Vidéo</option>
+                  <option value="ANIMATION">Animation</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>URL du média</span>
+                <input name="original_url" type="url" required placeholder="https://..." />
+              </label>
+              <label class="field">
+                <span>Tags (séparés par des virgules)</span>
+                <input name="tags" type="text" placeholder="tag1, tag2" />
+              </label>
+              <label class="field">
+                <span>Catégories (slugs, virgules)</span>
+                <input name="categories" type="text" placeholder="anime, 3d" />
+              </label>
+            </div>
+            <div class="form__col">
+              <label class="field">
+                <span>URL Poster / Miniature</span>
+                <input name="poster_url" type="url" placeholder="https://..." />
+              </label>
+              <div class="poster-preview" id="poster-preview">
+                <img src="" alt="Poster preview" class="poster-preview__img hidden" />
+                <div class="poster-preview__placeholder">Aperçu du poster</div>
+              </div>
+              <label class="field">
+                <span>Ou upload nouveau poster</span>
+                <input name="poster_file" type="file" accept="image/*" />
+              </label>
+            </div>
+          </div>
+          <div class="form__actions form__actions--between">
+            <button type="button" class="btn btn--danger" id="btn-delete">🗑 Supprimer</button>
+            <div class="form__actions">
+              <button type="button" class="btn btn--ghost" data-edit-close>Annuler</button>
+              <button type="submit" class="btn btn--primary">💾 Enregistrer</button>
+            </div>
+          </div>
+        </form>
       </div>
     </div>
 

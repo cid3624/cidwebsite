@@ -10,12 +10,16 @@ const els = {
   typeFilter: document.getElementById("type-filter"),
   sortFilter: document.getElementById("sort-filter"),
   sentinel: document.getElementById("sentinel"),
-  ageGate: document.getElementById("age-gate"),
+  onboarding: document.getElementById("onboarding"),
   modal: document.getElementById("modal"),
   formAdd: document.getElementById("form-add"),
   emptyState: document.getElementById("empty-state"),
   preview: document.getElementById("preview"),
-  previewBody: document.getElementById("preview-body")
+  previewBody: document.getElementById("preview-body"),
+  modalEdit: document.getElementById("modal-edit"),
+  formEdit: document.getElementById("form-edit"),
+  posterPreview: document.getElementById("poster-preview"),
+  posterPreviewImg: document.querySelector(".poster-preview__img")
 };
 
 let supabase = null;
@@ -37,19 +41,46 @@ function toggleTheme() {
   localStorage.setItem("theme", next);
 }
 
-function initAgeGate() {
+function initOnboarding() {
   const ok = sessionStorage.getItem("age_ok") === "1";
-  if (!els.ageGate) return;
+  if (!els.onboarding) return;
   if (ok) {
-    els.ageGate.classList.add("hidden");
-    els.ageGate.setAttribute("aria-hidden", "true");
+    els.onboarding.classList.add("hidden");
+    els.onboarding.setAttribute("aria-hidden", "true");
     return;
   }
+
+  let currentStep = 1;
+  const totalSteps = 3;
+  const steps = els.onboarding.querySelectorAll(".onboarding__step");
+
+  function showStep(step) {
+    steps.forEach((s, i) => {
+      s.classList.toggle("hidden", i + 1 !== step);
+    });
+    // Update dots
+    els.onboarding.querySelectorAll(".dot").forEach((d, i) => {
+      d.classList.toggle("active", i + 1 === step);
+    });
+  }
+
+  // Next buttons for steps 1 and 2
+  els.onboarding.querySelectorAll(".onboarding__next").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (currentStep < totalSteps) {
+        currentStep++;
+        showStep(currentStep);
+      }
+    });
+  });
+
+  // Confirm age on step 3
   document.getElementById("age-confirm")?.addEventListener("click", () => {
     sessionStorage.setItem("age_ok", "1");
-    els.ageGate.classList.add("hidden");
-    els.ageGate.setAttribute("aria-hidden", "true");
+    els.onboarding.classList.add("hidden");
+    els.onboarding.setAttribute("aria-hidden", "true");
   });
+
   document.getElementById("age-leave")?.addEventListener("click", () => {
     window.location.href = "about:blank";
   });
@@ -177,9 +208,38 @@ function openPreview(item) {
 function createCard(item) {
   const card = document.createElement("article");
   card.className = "card";
+  card.dataset.id = item.id;
 
   const media = document.createElement("div");
   media.className = "card__media";
+
+  // Admin buttons
+  const admin = document.createElement("div");
+  admin.className = "card__admin";
+
+  const editBtn = document.createElement("button");
+  editBtn.type = "button";
+  editBtn.className = "card__admin-btn";
+  editBtn.title = "Modifier";
+  editBtn.textContent = "✏️";
+  editBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openEditModal(item);
+  });
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "card__admin-btn card__admin-btn--delete";
+  deleteBtn.title = "Supprimer";
+  deleteBtn.textContent = "🗑";
+  deleteBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    deleteMedia(item, card);
+  });
+
+  admin.append(editBtn, deleteBtn);
+  media.appendChild(admin);
+
   const skeleton = document.createElement("div");
   skeleton.className = "card__skeleton";
   media.appendChild(skeleton);
@@ -192,7 +252,10 @@ function createCard(item) {
     video.controls = true;
     video.preload = "none";
     video.playsInline = true;
-    if (item.poster_url) video.poster = item.poster_url;
+    // Use poster_url if available
+    if (item.poster_url) {
+      video.poster = item.poster_url;
+    }
     const source = document.createElement("source");
     source.src = item.original_url;
     video.appendChild(source);
@@ -237,6 +300,69 @@ function createCard(item) {
   meta.append(tags, actions);
   card.append(media, meta);
   return card;
+}
+
+// Open edit modal with item data
+function openEditModal(item) {
+  if (!els.modalEdit || !els.formEdit) return;
+
+  // Populate form
+  els.formEdit.querySelector('[name="id"]').value = item.id;
+  els.formEdit.querySelector('[name="type"]').value = item.type;
+  els.formEdit.querySelector('[name="original_url"]').value = item.original_url || "";
+  els.formEdit.querySelector('[name="poster_url"]').value = item.poster_url || "";
+  els.formEdit.querySelector('[name="tags"]').value = (item.tags || []).join(", ");
+  els.formEdit.querySelector('[name="categories"]').value = (item.category_slugs || []).join(", ");
+
+  // Update poster preview
+  updatePosterPreview(item.poster_url);
+
+  // Show modal
+  els.modalEdit.classList.remove("hidden");
+}
+
+// Update poster preview image
+function updatePosterPreview(url) {
+  if (!els.posterPreviewImg) return;
+  if (url) {
+    els.posterPreviewImg.src = url;
+    els.posterPreviewImg.classList.remove("hidden");
+    els.posterPreviewImg.onload = () => els.posterPreviewImg.classList.remove("hidden");
+    els.posterPreviewImg.onerror = () => els.posterPreviewImg.classList.add("hidden");
+  } else {
+    els.posterPreviewImg.classList.add("hidden");
+    els.posterPreviewImg.src = "";
+  }
+}
+
+// Delete media item
+async function deleteMedia(item, cardElement) {
+  if (!confirm("Êtes-vous sûr de vouloir supprimer ce média ? Cette action est irréversible.")) {
+    return;
+  }
+
+  if (!supabase) {
+    alert("Supabase non configuré");
+    return;
+  }
+
+  try {
+    const { error } = await supabase.from("media").delete().eq("id", item.id);
+    if (error) throw error;
+
+    // Remove from UI
+    cardElement.style.transform = "scale(0)";
+    cardElement.style.opacity = "0";
+    setTimeout(() => {
+      cardElement.remove();
+      loaded = loaded.filter((x) => x.id !== item.id);
+      render();
+    }, 300);
+
+    setStatus("Média supprimé");
+  } catch (err) {
+    alert(`Erreur lors de la suppression: ${err.message}`);
+  }
 }
 
 async function loadNextPage() {
@@ -339,6 +465,99 @@ function setupModal() {
       alert(`Insertion impossible: ${err.message}`);
     }
   });
+}
+
+function setupEditModal() {
+  if (!els.modalEdit || !els.formEdit) return;
+
+  const close = () => els.modalEdit.classList.add("hidden");
+
+  // Close buttons
+  els.modalEdit.querySelectorAll("[data-edit-close]").forEach((n) => n.addEventListener("click", close));
+
+  // Poster URL input - live preview
+  const posterUrlInput = els.formEdit.querySelector('[name="poster_url"]');
+  posterUrlInput?.addEventListener("input", (e) => {
+    updatePosterPreview(e.target.value);
+  });
+
+  // Poster file upload - preview
+  const posterFileInput = els.formEdit.querySelector('[name="poster_file"]');
+  posterFileInput?.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Show local preview immediately
+    const reader = new FileReader();
+    reader.onload = (ev) => updatePosterPreview(ev.target.result);
+    reader.readAsDataURL(file);
+  });
+
+  // Form submission
+  els.formEdit.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    if (!supabase) return alert("Supabase non configuré");
+
+    const fd = new FormData(els.formEdit);
+    const id = fd.get("id");
+    const posterFile = fd.get("poster_file");
+
+    try {
+      let posterUrl = String(fd.get("poster_url") || "").trim() || null;
+
+      // Upload new poster if provided
+      if (posterFile && posterFile.size > 0) {
+        const ext = posterFile.name.split(".").pop() || "jpg";
+        const path = `posters/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from("media").upload(path, posterFile, {
+          cacheControl: "3600",
+          upsert: false
+        });
+        if (uploadError) throw uploadError;
+        const { data } = supabase.storage.from("media").getPublicUrl(path);
+        posterUrl = data.publicUrl;
+      }
+
+      const payload = {
+        type: String(fd.get("type")),
+        original_url: String(fd.get("original_url") || "").trim(),
+        poster_url: posterUrl,
+        tags: String(fd.get("tags") || "")
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean),
+        category_slugs: String(fd.get("categories") || "")
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean)
+      };
+
+      const { error } = await supabase.from("media").update(payload).eq("id", id);
+      if (error) throw error;
+
+      close();
+      els.formEdit.reset();
+      resetAndLoad();
+      setStatus("Média mis à jour");
+    } catch (err) {
+      alert(`Erreur lors de la mise à jour: ${err.message}`);
+    }
+  });
+
+  // Delete button
+  document.getElementById("btn-delete")?.addEventListener("click", async () => {
+    const id = els.formEdit.querySelector('[name="id"]').value;
+    const item = loaded.find((x) => String(x.id) === String(id));
+    if (item) {
+      // Find the card element
+      const card = els.gallery.querySelector(`[data-id="${id}"]`);
+      await deleteMedia(item, card);
+      close();
+    }
+  });
+
+  // Swipe to close
+  setupSwipeToClose(els.modalEdit, close);
 }
 
 function setupPreviewModal() {
@@ -446,11 +665,12 @@ function setupDoubleTapLike() {
 
 document.getElementById("btn-theme")?.addEventListener("click", toggleTheme);
 initTheme();
-initAgeGate();
+initOnboarding();
 setupSupabase();
 setupInfiniteScroll();
 setupFilters();
 setupModal();
+setupEditModal();
 setupPreviewModal();
 setupKeyboardHandling();
 setupDoubleTapLike();
