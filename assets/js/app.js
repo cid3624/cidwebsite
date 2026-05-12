@@ -19,7 +19,9 @@ const els = {
   modalEdit: document.getElementById("modal-edit"),
   formEdit: document.getElementById("form-edit"),
   posterPreview: document.getElementById("poster-preview"),
-  posterPreviewImg: document.querySelector(".poster-preview__img")
+  posterPreviewImg: document.querySelector(".poster-preview__img"),
+  profileFields: document.getElementById("profile-fields"),
+  typeSelect: document.querySelector('select[name="type"]')
 };
 
 let supabase = null;
@@ -185,8 +187,86 @@ function toggleLike(item, button) {
 function openPreview(item) {
   els.preview.classList.remove("hidden");
   els.previewBody.innerHTML = "";
+  
+  const isProfile = item.type === "PROFILE";
   const isVideo = item.type === "VIDEO" || item.type === "ANIMATION";
-  if (isVideo) {
+  
+  if (isProfile) {
+    // Profile preview with name, description and content
+    const profileContainer = document.createElement("div");
+    profileContainer.className = "profile-preview";
+    
+    // Profile header with image and name
+    const header = document.createElement("div");
+    header.className = "profile-preview__header";
+    
+    const profileImg = document.createElement("img");
+    profileImg.src = item.poster_url || item.original_url;
+    profileImg.alt = item.profile_name || "Profil";
+    profileImg.className = "profile-preview__img";
+    
+    const profileInfo = document.createElement("div");
+    profileInfo.className = "profile-preview__info";
+    
+    if (item.profile_name) {
+      const name = document.createElement("h2");
+      name.className = "profile-preview__name";
+      name.textContent = item.profile_name;
+      profileInfo.appendChild(name);
+    }
+    
+    if (item.profile_description) {
+      const desc = document.createElement("p");
+      desc.className = "profile-preview__description";
+      desc.textContent = item.profile_description;
+      profileInfo.appendChild(desc);
+    }
+    
+    header.appendChild(profileImg);
+    header.appendChild(profileInfo);
+    profileContainer.appendChild(header);
+    
+    // Profile content gallery
+    if (item.profile_content && item.profile_content.length > 0) {
+      const contentTitle = document.createElement("h3");
+      contentTitle.className = "profile-preview__content-title";
+      contentTitle.textContent = "Contenu";
+      profileContainer.appendChild(contentTitle);
+      
+      const contentGrid = document.createElement("div");
+      contentGrid.className = "profile-preview__grid";
+      
+      item.profile_content.forEach(contentUrl => {
+        const mediaItem = document.createElement("div");
+        mediaItem.className = "profile-preview__item";
+        
+        // Detect if URL is video or image
+        const isVideoContent = /\.(mp4|webm|mov|avi)$/i.test(contentUrl);
+        
+        if (isVideoContent) {
+          const video = document.createElement("video");
+          video.controls = true;
+          video.playsInline = true;
+          const source = document.createElement("source");
+          source.src = contentUrl;
+          video.appendChild(source);
+          mediaItem.appendChild(video);
+        } else {
+          const img = document.createElement("img");
+          img.src = contentUrl;
+          img.alt = "";
+          img.loading = "lazy";
+          mediaItem.appendChild(img);
+        }
+        
+        contentGrid.appendChild(mediaItem);
+      });
+      
+      profileContainer.appendChild(contentGrid);
+    }
+    
+    els.previewBody.appendChild(profileContainer);
+  } else if (isVideo) {
     const v = document.createElement("video");
     v.controls = true;
     v.autoplay = true;
@@ -244,9 +324,27 @@ function createCard(item) {
   media.appendChild(skeleton);
 
   const isVideo = item.type === "VIDEO" || item.type === "ANIMATION";
+  const isProfile = item.type === "PROFILE";
   const markLoaded = () => media.classList.add("is-loaded");
 
-  if (isVideo) {
+  if (isProfile) {
+    // Profile card - show poster as main image
+    const img = document.createElement("img");
+    img.src = item.poster_url || item.original_url;
+    img.alt = item.profile_name || "Profil";
+    img.loading = "lazy";
+    img.decoding = "async";
+    
+    img.addEventListener("load", markLoaded, { once: true });
+    img.addEventListener("error", () => {
+      if (img.src !== item.original_url) {
+        img.src = item.original_url;
+      }
+      markLoaded();
+    });
+    
+    media.appendChild(img);
+  } else if (isVideo) {
     const video = document.createElement("video");
     video.controls = false; // Disable native controls to prevent fullscreen zoom issue
     video.preload = "metadata";
@@ -338,6 +436,15 @@ function createCard(item) {
 
   const meta = document.createElement("div");
   meta.className = "card__meta";
+  
+  // Show profile name for PROFILE type
+  if (isProfile && item.profile_name) {
+    const profileName = document.createElement("div");
+    profileName.className = "card__profile-name";
+    profileName.textContent = item.profile_name;
+    meta.appendChild(profileName);
+  }
+  
   const tags = document.createElement("div");
   tags.className = "card__tags";
   (item.tags || []).slice(0, 8).forEach((t) => {
@@ -935,6 +1042,17 @@ function setupModal() {
   document.getElementById("btn-add")?.addEventListener("click", () => els.modal.classList.remove("hidden"));
   els.modal.querySelectorAll("[data-close]").forEach((n) => n.addEventListener("click", close));
 
+  // Toggle profile fields based on type selection
+  if (els.typeSelect && els.profileFields) {
+    els.typeSelect.addEventListener('change', (e) => {
+      if (e.target.value === 'PROFILE') {
+        els.profileFields.classList.remove('hidden');
+      } else {
+        els.profileFields.classList.add('hidden');
+      }
+    });
+  }
+
   // Auto-detect type and poster when URL changes
   const urlInput = els.formAdd.querySelector('[name="original_url"]');
   const typeSelect = els.formAdd.querySelector('[name="type"]');
@@ -1006,6 +1124,16 @@ function setupModal() {
           .filter(Boolean),
         storage_path: storagePath
       };
+
+      // Add profile-specific data if type is PROFILE
+      if (detectedType === 'PROFILE') {
+        payload.profile_name = String(fd.get("profile_name") || "").trim();
+        payload.profile_description = String(fd.get("profile_description") || "").trim();
+        payload.profile_content = String(fd.get("profile_content") || "")
+          .split("\n")
+          .map((x) => x.trim())
+          .filter(Boolean);
+      }
       const { error } = await supabase.from("media").insert(payload);
       if (error) throw error;
       close();

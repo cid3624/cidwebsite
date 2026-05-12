@@ -89,6 +89,7 @@
               <option value="IMAGE">Images</option>
               <option value="VIDEO">Vidéos</option>
               <option value="ANIMATION">Animations</option>
+              <option value="PROFILE">Profils</option>
             </select>
           </label>
           <label class="field field--small">
@@ -123,6 +124,7 @@
               <option value="IMAGE">Image</option>
               <option value="VIDEO">Vidéo</option>
               <option value="ANIMATION">Animation</option>
+              <option value="PROFILE">Profil Femme</option>
             </select>
           </label>
           <label class="field">
@@ -141,6 +143,20 @@
             <span>Tags (séparés par des virgules)</span>
             <input name="tags" type="text" placeholder="tag1, tag2" />
           </label>
+          <div id="profile-fields" class="profile-fields hidden">
+            <label class="field">
+              <span>Nom du profil</span>
+              <input name="profile_name" type="text" placeholder="Mia Khalifa" />
+            </label>
+            <label class="field">
+              <span>Description</span>
+              <textarea name="profile_description" placeholder="Description du profil..." rows="3"></textarea>
+            </label>
+            <label class="field">
+              <span>Contenu additionnel (URLs séparées par des lignes)</span>
+              <textarea name="profile_content" placeholder="https://video1.mp4&#10;https://video2.mp4&#10;https://image1.jpg" rows="4"></textarea>
+            </label>
+          </div>
           <label class="field">
             <span>Catégories (slugs, virgules)</span>
             <input name="categories" type="text" placeholder="anime, 3d" />
